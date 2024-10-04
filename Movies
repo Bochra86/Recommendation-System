@@ -26,7 +26,6 @@ R = ratings_matrix.to_numpy()  # Convert DataFrame to NumPy array
 K = 2  # Number of latent features
 P = np.random.rand(num_users, K)  # User feature matrix (num_users x K)
 Q = np.random.rand(num_movies, K)  # Movie feature matrix (num_movies x K)
-Q = Q.T  # Transpose for easier matrix multiplication
 
 # Define parameters
 num_epochs = 5000  # Number of training iterations
@@ -67,7 +66,7 @@ def matrix_factorization(R, P, Q, K, steps, learning_rate, reg_param):
 trained_P, trained_Q = matrix_factorization(R, P, Q, K, num_epochs, learning_rate, regularization_param)
 
 # Predict the full ratings matrix (including unseen ratings)
-predicted_ratings = np.dot(trained_P, trained_Q)
+predicted_ratings = np.dot(trained_P, trained_Q.T)
 
 # Convert to DataFrame for easy interpretation
 predicted_ratings_df = pd.DataFrame(predicted_ratings, index=ratings_matrix.index, columns=ratings_matrix.columns)

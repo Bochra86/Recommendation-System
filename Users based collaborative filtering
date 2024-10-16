@@ -1,0 +1,56 @@
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Example data: user_id, and the items they've interacted with in various ways
+data = {
+    'user_id': [1, 2, 3, 4],
+    'items_purchased': [[101, 102], [103, 104], [101], [105]],
+    'search_history': [[105, 106], [101, 102], [107], [108]],
+    'wish_lists': [[109, 110], [], [101], [105, 111]],
+    'add_to_cart': [[101, 106], [107], [102, 103], []]
+}
+
+# Creating a DataFrame
+df = pd.DataFrame(data)
+
+# Step 1: Create a list of all unique item IDs across all interactions
+all_items = set(item for sublist in df['items_purchased'] + df['search_history'] + df['wish_lists'] + df['add_to_cart'] for item in sublist)
+
+# Step 2: Create a binary interaction matrix where each row represents a user and each column represents an item
+interaction_matrix = pd.DataFrame(index=df['user_id'], columns=all_items).fillna(0)
+
+# Step 3: Populate the interaction matrix with binary values indicating user-item interactions
+for _, row in df.iterrows():
+    user_id = row['user_id']
+    interacted_items = set(row['items_purchased'] + row['search_history'] + row['wish_lists'] + row['add_to_cart'])
+    interaction_matrix.loc[user_id, interacted_items] = 1
+
+# Step 4: Compute cosine similarity between users based on their item interactions
+similarity_matrix = cosine_similarity(interaction_matrix)
+similarity_df = pd.DataFrame(similarity_matrix, index=df['user_id'], columns=df['user_id'])
+
+# Step 5: Function to get top N similar users
+def get_similar_users(user_id, similarity_df, top_n=2):
+    similar_users = similarity_df[user_id].sort_values(ascending=False).index[1:top_n+1]  # Exclude the user itself
+    return similar_users
+
+# Step 6: Function to recommend items to a user based on similar users' interactions
+def recommend_items(user_id, df, interaction_matrix, similarity_df, top_n_similar_users=2, top_n_recommendations=3):
+    similar_users = get_similar_users(user_id, similarity_df, top_n_similar_users)
+    
+    # Get the items that the current user has interacted with
+    current_user_items = set(interaction_matrix.loc[user_id][interaction_matrix.loc[user_id] == 1].index)
+    
+    # Find items interacted by similar users but not by the current user
+    recommended_items = set()
+    for similar_user in similar_users:
+        similar_user_items = set(interaction_matrix.loc[similar_user][interaction_matrix.loc[similar_user] == 1].index)
+        # Recommend items not in current user's interactions
+        recommended_items.update(similar_user_items - current_user_items)
+    
+    # Return the top N recommended items
+    return list(recommended_items)[:top_n_recommendations]
+
+# Example: Get recommendations for user 1
+recommended_items_for_user_1 = recommend_items(1, df, interaction_matrix, similarity_df, top_n_similar_users=2, top_n_recommendations=3)
+print(f"Recommended items for User 1: {recommended_items_for_user_1}")
